@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>Weekly Report Form</title>
+  <style>
+    body { font-family: Arial, sans-serif; direction: rtl; text-align: right; margin: 20px; }
+    form { max-width: 600px; margin: 0 auto; }
+    label, input, textarea, button { display: block; width: 100%; margin-bottom: 10px; }
+    button { background-color: #4CAF50; color: white; padding: 10px; border: none; cursor: pointer; }
+    button:hover { background-color: #45a049; }
+  </style>
+</head>
+<body>
+  <h1>فرم گزارش هفتگی</h1>
+  <form id="report-form">
+    <label for="weekDate">تاریخ هفته:</label>
+    <input type="date" id="weekDate" name="weekDate" required>
+    <label for="nameRole">نام و نقش:</label>
+    <input type="text" id="nameRole" name="nameRole" required placeholder="مثال: محمد حسینی، مسئول نصب">
+    <label for="toDoList">لیست وظایف هفته:</label>
+    <textarea id="toDoList" name="toDoList" required placeholder="وظایف هفته"></textarea>
+    <label for="activities">خلاصه فعالیت‌ها:</label>
+    <textarea id="activities" name="activities" required></textarea>
+    <button type="submit">ارسال گزارش</button>
+  </form>
+
+  <!-- Hidden div for PDF content -->
+  <div id="report-content" style="display: none; direction: rtl; text-align: right; font-family: Arial, sans-serif; padding: 20px;">
+    <h1>گزارش هفتگی</h1>
+    <p><strong>تاریخ هفته:</strong> <span id="pdfWeekDate"></span></p>
+    <p><strong>نام و نقش:</strong> <span id="pdfNameRole"></span></p>
+    <p><strong>لیست وظایف هفته:</strong></p>
+    <p><span id="pdfToDoList"></span></p>
+    <p><strong>خلاصه فعالیت‌ها:</strong></p>
+    <p><span id="pdfActivities"></span></p>
+  </div>
+
+  <!-- Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://smtpjs.com/v3/smtp.js"></script>
+  <script>
+    document.getElementById('report-form').addEventListener('submit', function(event) {
+      event.preventDefault();
+
+      // Collect form data
+      const formData = new FormData(this);
+      const data = Object.fromEntries(formData.entries());
+
+      // Populate PDF content
+      document.getElementById('pdfWeekDate').textContent = data.weekDate;
+      document.getElementById('pdfNameRole').textContent = data.nameRole;
+      document.getElementById('pdfToDoList').textContent = data.toDoList;
+      document.getElementById('pdfActivities').textContent = data.activities;
+
+      // Generate PDF
+      const element = document.getElementById('report-content');
+      const name = data.nameRole.split('،')[0].trim().replace(/\s+/g, '_');
+      const formattedDate = data.weekDate.replace(/-/g, '_');
+      const pdfName = `${name}_${formattedDate}_WeeklyReport.pdf`;
+
+      html2pdf()
+        .from(element)
+        .set({
+          margin: 1,
+          filename: pdfName,
+          html2canvas: { scale: 2 },
+          jsPDF: { orientation: 'portrait', unit: 'in', format: 'letter' }
+        })
+        .output('datauristring')
+        .then(function(pdfDataUri) {
+          const pdfBase64 = pdfDataUri.split(',')[1];
+
+          // Send email
+          Email.send({
+            Host: "smtp.gmail.com",
+            Username: "artino.reports@gmail.com", // Replace with your Gmail
+            Password: "ldyklzonhsqmxvyj",     // Replace with App Password
+            To: "info.artinoco@gmail.com",             // Replace with recipient email
+            From: "YOUR_GMAIL_ADDRESS@gmail.com",
+            Subject: `Weekly Report - ${data.weekDate} - ${data.nameRole}`,
+            Body: `
+              <div style="direction: rtl; text-align: right;">
+                <p>سلام،</p>
+                <p>گزارش هفتگی ${data.nameRole} برای ${data.weekDate} پیوست شده است.</p>
+                <p>با تشکر،</p>
+              </div>
+            `,
+            Attachments: [{ name: pdfName, data: pdfBase64 }]
+          }).then(
+            () => alert('گزارش با موفقیت ارسال شد!'),
+            error => {
+              alert('خطا در ارسال گزارش.');
+              console.error('Email error:', error);
+            }
+          );
+        });
+    });
+  </script>
+</body>
+</html>
+
